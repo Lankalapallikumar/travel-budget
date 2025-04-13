@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Travel Budget Planner</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: url('img.avif') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .neon-box {
+      border: 3px solid #00f5d4;
+      padding: 20px;
+      border-radius: 15px;
+      display: inline-block;
+      margin-bottom: 20px;
+      box-shadow:
+        0 0 10px #00f5d4,
+        0 0 20px #00f5d4,
+        0 0 30px #00f5d4,
+        0 0 40px #00f5d4;
+      background-color: rgba(0, 0, 0, 0.6);
+    }
+
+    h1 {
+      color: #00f5d4;
+      font-size: 36px;
+      text-shadow: 0 0 10px rgba(0, 245, 212, 0.7), 0 0 20px rgba(0, 245, 212, 0.5);
+      margin: 0;
+    }
+
+    .form-section {
+      display: inline-block;
+      margin-top: 30px;
+      padding: 20px;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 245, 212, 0.6);
+    }
+
+    .form-section input {
+      padding: 12px;
+      margin: 10px 0;
+      width: 100%;
+      border-radius: 10px;
+      border: 2px solid #00f5d4;
+      background-color: transparent;
+      color: white;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    .form-section button {
+      background-color: #00f5d4;
+      color: black;
+      font-size: 18px;
+      padding: 12px 20px;
+      border-radius: 50px;
+      cursor: pointer;
+      border: none;
+      margin: 10px 5px;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .form-section button:hover {
+      background-color: #ff6347;
+      color: white;
+      transform: scale(1.05);
+    }
+
+    .output {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 245, 212, 0.6);
+      color: #ffffff;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    canvas {
+      margin-top: 20px;
+      margin-bottom: 20px;
+      max-width: 100%;
+      height: 250px !important;
+      width: 100% !important;
+      border: 1px solid #00f5d4;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="neon-box">
+    <h1>🧳 Travel Budget Planner</h1>
+  </div>
+  <p><strong>Fun Score:</strong> A numeric value you assign to each city based on your interest level, events, experiences, or recommendations. Higher scores mean more fun!</p>
+
+  <div class="form-section">
+    <label>Total Budget:</label>
+    <input type="number" id="budget" placeholder="Enter your total budget" />
+
+    <label>Number of Cities:</label>
+    <input type="number" id="cityCount" placeholder="Enter number of cities" />
+    <button onclick="generateCityInputs()">Add Cities</button>
+
+    <div id="cities"></div>
+    <button onclick="calculatePlan()">Plan Trip</button>
+  </div>
+
+  <div id="result" class="output" style="display:none">
+    <h2>Selected Cities:</h2>
+    <ul id="selectedCities"></ul>
+    <p id="summary"></p>
+    <p id="maxStats"></p>
+    <p id="balance"></p>
+    <canvas id="tripChart"></canvas>
+    <canvas id="funChart"></canvas>
+  </div>
+
+  <script>
+    function generateCityInputs() {
+      const count = parseInt(document.getElementById('cityCount').value);
+      const container = document.getElementById('cities');
+      container.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        container.innerHTML += `
+          <div class="city-inputs">
+            <input type="text" id="name${i}" placeholder="City Name" />
+            <input type="number" id="cost${i}" placeholder="Cost" />
+            <input type="number" id="fun${i}" placeholder="Fun Score" />
+          </div>
+        `;
+      }
+    }
+
+    function calculatePlan() {
+      const budget = parseInt(document.getElementById('budget').value);
+      const count = parseInt(document.getElementById('cityCount').value);
+      let cities = [];
+
+      for (let i = 0; i < count; i++) {
+        let name = document.getElementById(`name${i}`).value;
+        let cost = parseInt(document.getElementById(`cost${i}`).value);
+        let fun = parseInt(document.getElementById(`fun${i}`).value);
+        if (name && !isNaN(cost) && !isNaN(fun)) {
+          cities.push({ name, cost, fun });
+        }
+      }
+
+      cities.sort((a, b) => (b.fun / b.cost) - (a.fun / a.cost));
+
+      let totalCost = 0;
+      let totalFun = 0;
+      let selected = [];
+      for (let city of cities) {
+        if (totalCost + city.cost <= budget) {
+          selected.push(city);
+          totalCost += city.cost;
+          totalFun += city.fun;
+        }
+      }
+
+      if (selected.length === 0) {
+        alert("No cities can be visited within the budget.");
+        return;
+      }
+
+      const resultSection = document.getElementById('result');
+      const list = document.getElementById('selectedCities');
+      const summary = document.getElementById('summary');
+      const maxStats = document.getElementById('maxStats');
+      const balance = document.getElementById('balance');
+      list.innerHTML = '';
+
+      let maxCost = 0, maxFun = 0;
+      selected.forEach(city => {
+        const li = document.createElement('li');
+        li.textContent = `${city.name} - Cost: ${city.cost}, Fun: ${city.fun}`;
+        list.appendChild(li);
+        if (city.cost > maxCost) maxCost = city.cost;
+        if (city.fun > maxFun) maxFun = city.fun;
+      });
+
+      summary.textContent = `Total Cost: ${totalCost}, Total Fun Score: ${totalFun}`;
+      maxStats.textContent = `Maximum Cost City: ${maxCost}, Maximum Fun Score: ${maxFun}`;
+      balance.textContent = `Remaining Balance: ${budget - totalCost}`;
+      resultSection.style.display = 'block';
+
+      // Trip Chart
+      const tripCtx = document.getElementById('tripChart').getContext('2d');
+      new Chart(tripCtx, {
+        type: 'bar',
+        data: {
+          labels: selected.map(c => c.name),
+          datasets: [
+            {
+              label: 'Cost',
+              data: selected.map(c => c.cost),
+              backgroundColor: 'rgba(0, 245, 212, 0.6)'
+            }
+          ]
+        }
+      });
+
+      // Fun Chart
+      const funCtx = document.getElementById('funChart').getContext('2d');
+      new Chart(funCtx, {
+        type: 'bar',
+        data: {
+          labels: selected.map(c => c.name),
+          datasets: [
+            {
+              label: 'Fun Score',
+              data: selected.map(c => c.fun),
+              backgroundColor: 'rgba(255, 99, 132, 0.6)'
+            }
+          ]
+        }
+      });
+    }
+  </script>
+</body>
+</html>
